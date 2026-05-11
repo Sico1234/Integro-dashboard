@@ -1,0 +1,73 @@
+{
+  "entities": {
+    "Case": {
+      "title": "Case",
+      "description": "Represents a case in the MIS system.",
+      "type": "object",
+      "properties": {
+        "uniqueId": { "type": "string", "description": "Sequential Unique ID (e.g. A1, A2...)" },
+        "agmtNo": { "type": "string", "description": "Agreement Number" },
+        "noticeDate": { "type": "string", "format": "date-time", "description": "Date of notice" },
+        "receivedDate": { "type": "string", "format": "date-time", "description": "Date case was received" },
+        "fro": { "type": "string", "description": "From location" },
+        "to": { "type": "string", "description": "To location" },
+        "borrowerName": { "type": "string", "description": "Borrower Name" },
+        "pos": { "type": "string", "description": "Principal Outstanding" },
+        "tos": { "type": "string", "description": "Total Outstanding" },
+        "dsSbRemarks": { "type": "string", "description": "DS/SB Remarks" },
+        "dsSbRemarksDate": { "type": "string", "format": "date-time", "description": "Date when DS/SB Remarks were last updated" },
+        "assignedTo": { "type": "string", "description": "Agent assigned to the case" },
+        "actionToBeTaken": { "type": "string", "description": "Action to be taken" },
+        "comments": { "type": "string", "description": "Additional comments" },
+        "dispatchStatus": { "type": "string", "description": "Dispatch status" },
+        "dispatchedDate": { "type": "string", "format": "date-time", "description": "Date of dispatch" },
+        "company": { "type": "string", "description": "Company Name" },
+        "arbitrationStatus": { "type": "string", "description": "Arbitration status" },
+        "pool": { "type": "string", "enum": ["POOL-1", "POOL-2", "POOL-3", "POOL-4", "POOL-5", "POOL-6", "POOL-7"], "description": "Assigned pool for the case" },
+        "priority": { "type": "string", "enum": ["High", "Medium", "Low"], "description": "Priority level of the case" },
+        "overdueEmailSent": { "type": "boolean", "description": "Whether an overdue notification email has been sent" },
+        "overdueEmailSentAt": { "type": "string", "format": "date-time", "description": "Timestamp when the last overdue notification was sent" },
+        "highPriorityEmailSent": { "type": "boolean", "description": "Whether a high priority escalation email has been sent" },
+        "highPriorityEmailSentAt": { "type": "string", "format": "date-time", "description": "Timestamp when the high priority email was sent" }
+      },
+      "required": ["agmtNo", "borrowerName", "receivedDate"]
+    },
+    "Agent": {
+      "title": "Agent",
+      "description": "Represents an agent who can be assigned cases.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Agent name" },
+        "email": { "type": "string", "format": "email", "description": "Agent email" }
+      },
+      "required": ["name"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Represents a system user for authentication.",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string", "description": "Login username" },
+        "password": { "type": "string", "description": "Hashed or plain password (for this internal tool)" },
+        "passwordUpdatedAt": { "type": "string", "format": "date-time", "description": "Last time the password was changed" },
+        "role": { "type": "string", "enum": ["admin", "agent"], "description": "User role" },
+        "email": { "type": "string", "format": "email", "description": "Email associated with the user (for agents)" }
+      },
+      "required": ["username", "password", "passwordUpdatedAt", "role"]
+    }
+  },
+  "firestore": {
+    "/cases": {
+      "schema": "Case",
+      "description": "Collection of all cases."
+    },
+    "/agents": {
+      "schema": "Agent",
+      "description": "Collection of available agents."
+    },
+    "/users": {
+      "schema": "User",
+      "description": "Collection of system users."
+    }
+  }
+}

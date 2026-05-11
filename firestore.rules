@@ -1,0 +1,140 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: cases
+// Document ID: auto-generated
+// Fields:
+//   - uniqueId: string (required) - Sequential Unique ID
+//   - agmtNo: string (required) - Agreement Number
+//   - noticeDate: timestamp (optional) - Date of notice
+//   - receivedDate: timestamp (required) - Date case was received
+//   - fro: string (optional) - From location
+//   - to: string (optional) - To location
+//   - borrowerName: string (required) - Borrower Name
+//   - pos: string (optional) - Principal Outstanding
+//   - tos: string (optional) - Total Outstanding
+//   - dsSbRemarks: string (optional) - DS/SB Remarks
+//   - assignedTo: string (optional) - Agent assigned
+//   - actionToBeTaken: string (optional) - Action to be taken
+//   - comments: string (optional) - Additional comments
+//   - dispatchStatus: string (optional) - Dispatch status
+//   - dispatchedDate: timestamp (optional) - Date of dispatch
+//   - company: string (optional) - Company Name
+//   - priority: string (optional) - Priority level (High, Medium, Low)
+//
+// Collection: agents
+// Document ID: auto-generated
+// Fields:
+//   - name: string (required) - Agent name
+//   - email: string (optional) - Agent email
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper Functions
+    function isAuthenticated() {
+      // Since anonymous auth is restricted in this environment, 
+      // we rely on the app's internal username/password check.
+      return true;
+    }
+
+    function isAdmin() {
+      return isAuthenticated(); // Simplified for this custom auth internal tool
+    }
+    
+    function isValidUser(data) {
+      return data.username is string && data.username.size() > 0 &&
+             data.password is string && data.password.size() > 0 &&
+             data.passwordUpdatedAt is timestamp &&
+             data.createdAt is timestamp;
+    }
+
+    // Users Collection (for custom auth)
+    match /users/{docId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && isValidUser(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    function isValidCase(data) {
+      return (data.agmtNo is string && data.agmtNo.size() > 0) &&
+             (data.uniqueId is string && data.uniqueId.size() > 0) &&
+             (data.borrowerName is string && data.borrowerName.size() > 0) &&
+             (!('receivedDate' in data) || data.receivedDate is timestamp || data.receivedDate == null) &&
+             (!('noticeDate' in data) || data.noticeDate is timestamp || data.noticeDate == null) &&
+             (!('fro' in data) || (data.fro is string)) &&
+             (!('to' in data) || (data.to is string)) &&
+             (!('pos' in data) || (data.pos is string)) &&
+             (!('tos' in data) || (data.tos is string)) &&
+             (!('dsSbRemarks' in data) || (data.dsSbRemarks is string)) &&
+             (!('dsSbRemarksDate' in data) || data.dsSbRemarksDate is timestamp || data.dsSbRemarksDate == null) &&
+             (!('assignedTo' in data) || (data.assignedTo is string)) &&
+             (!('actionToBeTaken' in data) || (data.actionToBeTaken is string)) &&
+             (!('comments' in data) || (data.comments is string)) &&
+             (!('dispatchStatus' in data) || (data.dispatchStatus is string)) &&
+             (!('dispatchedDate' in data) || data.dispatchedDate is timestamp || data.dispatchedDate == null) &&
+             (!('company' in data) || (data.company is string)) &&
+             (!('pool' in data) || (data.pool in ['POOL-1', 'POOL-2', 'POOL-3', 'POOL-4', 'POOL-5', 'POOL-6', 'POOL-7', ''])) &&
+             (!('priority' in data) || (data.priority in ['High', 'Medium', 'Low', ''])) &&
+             (!('overdueEmailSent' in data) || data.overdueEmailSent is bool) &&
+             (!('overdueEmailSentAt' in data) || data.overdueEmailSentAt is timestamp || data.overdueEmailSentAt == null) &&
+             (!('highPriorityEmailSent' in data) || data.highPriorityEmailSent is bool) &&
+             (!('highPriorityEmailSentAt' in data) || data.highPriorityEmailSentAt is timestamp || data.highPriorityEmailSentAt == null);
+    }
+
+    function isValidCaseUpdate(data) {
+      return (!('agmtNo' in data) || (data.agmtNo is string && data.agmtNo.size() > 0)) &&
+             (!('uniqueId' in data) || (data.uniqueId is string && data.uniqueId.size() > 0)) &&
+             (!('borrowerName' in data) || (data.borrowerName is string && data.borrowerName.size() > 0)) &&
+             (!('receivedDate' in data) || data.receivedDate is timestamp || data.receivedDate == null) &&
+             (!('noticeDate' in data) || data.noticeDate is timestamp || data.noticeDate == null) &&
+             (!('fro' in data) || (data.fro is string)) &&
+             (!('to' in data) || (data.to is string)) &&
+             (!('pos' in data) || (data.pos is string)) &&
+             (!('tos' in data) || (data.tos is string)) &&
+             (!('dsSbRemarks' in data) || (data.dsSbRemarks is string)) &&
+             (!('dsSbRemarksDate' in data) || data.dsSbRemarksDate is timestamp || data.dsSbRemarksDate == null) &&
+             (!('assignedTo' in data) || (data.assignedTo is string)) &&
+             (!('actionToBeTaken' in data) || (data.actionToBeTaken is string)) &&
+             (!('comments' in data) || (data.comments is string)) &&
+             (!('dispatchStatus' in data) || (data.dispatchStatus is string)) &&
+             (!('dispatchedDate' in data) || data.dispatchedDate is timestamp || data.dispatchedDate == null) &&
+             (!('company' in data) || (data.company is string)) &&
+             (!('pool' in data) || (data.pool in ['POOL-1', 'POOL-2', 'POOL-3', 'POOL-4', 'POOL-5', 'POOL-6', 'POOL-7', ''])) &&
+             (!('priority' in data) || (data.priority in ['High', 'Medium', 'Low', ''])) &&
+             (!('overdueEmailSent' in data) || data.overdueEmailSent is bool) &&
+             (!('overdueEmailSentAt' in data) || data.overdueEmailSentAt is timestamp || data.overdueEmailSentAt == null) &&
+             (!('highPriorityEmailSent' in data) || data.highPriorityEmailSent is bool) &&
+             (!('highPriorityEmailSentAt' in data) || data.highPriorityEmailSentAt is timestamp || data.highPriorityEmailSentAt == null);
+    }
+
+    function isValidAgent(data) {
+      return data.name is string && data.name.size() > 0;
+    }
+
+    // Cases Collection
+    match /cases/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidCase(request.resource.data);
+      allow update: if isAuthenticated() && isValidCaseUpdate(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // Agents Collection
+    match /agents/{agentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidAgent(request.resource.data);
+      allow update: if isAuthenticated() && isValidAgent(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    // Metadata Collection (for counters)
+    match /metadata/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

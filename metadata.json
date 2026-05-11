@@ -1,0 +1,6 @@
+{
+  "name": "Case Tracking Dashboard",
+  "description": "Professional dashboard for tracking cases, assignments, feedback, and dispatch status with ageing logic and log generation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
