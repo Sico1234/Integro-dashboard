@@ -18,6 +18,7 @@ export function BulkEditCases() {
 
   const handleDownloadTemplate = () => {
     const headers = [
+      'Unique ID',
       'Agmt No.', 
       'Borrower Name', 
       'Company', 
@@ -76,25 +77,101 @@ export function BulkEditCases() {
     const assignmentsByAgent: Record<string, { agent: any, cases: any[] }> = {};
 
     for (const row of jsonData) {
-      const agmtNo = String(row['Agmt No.'] || row['agmtNo'] || row['Case ID'] || row['caseId'] || '').trim();
+      const agmtNo = String(
+  row['Agmt No.'] ||
+  row['agmtNo'] ||
+  row['Agreement No'] ||
+  row['Case ID'] ||
+  row['caseId'] ||
+  ''
+).trim();
 
-      const excelNoticeDateRaw = row['Notice Date'] || row['noticeDate'];
-      const excelNoticeDateStr = excelNoticeDateRaw ? formatDate(normalizeDate(excelNoticeDateRaw)) : null;
+const excelUniqueId = String(
+  row['Unique ID'] ||
+  row['uniqueId'] ||
+  row['Unique No'] ||
+  row['uniqueNo'] ||
+  row['Case Unique ID'] ||
+  ''
+).trim();
 
-      // Find best match matching Agmt No and optionally Notice Date
-      const matchedCase = cases.find(c => {
-        const dbAgmtNo = String(c.agmtNo || '').trim();
-        if (dbAgmtNo !== agmtNo) return false;
+const excelNoticeDateRaw =
+  row['Notice Date'] ||
+  row['noticeDate'];
 
-        // If notice date is specified in excel, try to match it
-        if (excelNoticeDateStr) {
-          const dbNoticeDateStr = c.noticeDate ? formatDate(c.noticeDate) : '-';
-          return dbNoticeDateStr === excelNoticeDateStr;
-        }
-        return true;
-      });
+const excelNoticeDateStr = excelNoticeDateRaw
+  ? formatDate(normalizeDate(excelNoticeDateRaw))
+  : null;
 
-      const caseItem = matchedCase;
+let matchedCase = null;
+
+// ----------------------------------------
+// 1. BEST MATCH → Agmt No + Notice Date
+// ----------------------------------------
+if (agmtNo && excelNoticeDateStr) {
+  matchedCase = cases.find(c => {
+    const dbAgmtNo = String(c.agmtNo || '').trim();
+
+    const dbNoticeDate = c.noticeDate
+      ? formatDate(c.noticeDate)
+      : '';
+
+    return (
+      dbAgmtNo.toLowerCase() === agmtNo.toLowerCase() &&
+      dbNoticeDate === excelNoticeDateStr
+    );
+  });
+}
+
+// ----------------------------------------
+// 2. FALLBACK → Agmt No + Unique ID
+// ----------------------------------------
+if (!matchedCase && agmtNo && excelUniqueId) {
+  matchedCase = cases.find(c => {
+    const dbAgmtNo = String(c.agmtNo || '').trim();
+
+    const dbUniqueId = String(
+      c.uniqueId || ''
+    ).trim();
+
+    return (
+      dbAgmtNo.toLowerCase() === agmtNo.toLowerCase() &&
+      dbUniqueId.toLowerCase() === excelUniqueId.toLowerCase()
+    );
+  });
+}
+
+// ----------------------------------------
+// 3. FALLBACK → Unique ID only
+// ----------------------------------------
+if (!matchedCase && excelUniqueId) {
+  matchedCase = cases.find(c => {
+    const dbUniqueId = String(
+      c.uniqueId || ''
+    ).trim();
+
+    return (
+      dbUniqueId.toLowerCase() === excelUniqueId.toLowerCase()
+    );
+  });
+}
+
+// ----------------------------------------
+// 4. LAST OPTION → Agmt No only
+// ----------------------------------------
+if (!matchedCase && agmtNo) {
+  matchedCase = cases.find(c => {
+    const dbAgmtNo = String(
+      c.agmtNo || ''
+    ).trim();
+
+    return (
+      dbAgmtNo.toLowerCase() === agmtNo.toLowerCase()
+    );
+  });
+}
+
+const caseItem = matchedCase;
 
       if (caseItem) {
         try {
