@@ -153,21 +153,24 @@ export function AddCaseDialog() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="pool">POOL</Label>
-              <select 
-                id="pool" 
-                name="pool" 
+              
+	      <input
+                list="pool-options" 
+                id="pool"
+		name="pool" 
+		placeholder="Select or type pool"
                 defaultValue=""
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <option value="">Select Pool</option>
-                <option value="POOL-1">POOL-1</option>
-                <option value="POOL-2">POOL-2</option>
-                <option value="POOL-3">POOL-3</option>
-                <option value="POOL-4">POOL-4</option>
-                <option value="POOL-5">POOL-5</option>
-                <option value="POOL-6">POOL-6</option>
-                <option value="POOL-7">POOL-7</option>
-              </select>
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+  />
+                <datalist id="pool-options">
+                <option value="POOL-1" />
+                <option value="POOL-2" />
+                <option value="POOL-3" />
+                <option value="POOL-4" />
+                <option value="POOL-5" />
+                <option value="POOL-6" />
+		<option value="POOL-7" />
+              </datalist>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="priority">Priority</Label>

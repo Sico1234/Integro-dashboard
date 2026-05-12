@@ -113,12 +113,12 @@ const CaseRow = memo(({
 
   return (
     <motion.tr 
-      layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-      className={cn(
+        layout
+       initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+        className={cn(
         "hover:bg-gray-50/50 transition-colors border-b",
         selectedIds.includes(item.id) && "bg-primary/10 hover:bg-primary/15 shadow-[inset_4px_0_0_0_theme(colors.primary.DEFAULT)]"
       )}
@@ -437,27 +437,36 @@ const CaseRow = memo(({
           disabled={isAgent}
         />
       </TableCell>
-      <TableCell className="border-r" style={{ width: columnWidths.pool, minWidth: columnWidths.pool }}>
-        <Select 
-          value={item.pool || ""} 
-          onValueChange={(val: string | null) => handleFieldUpdate(item, 'pool', val || '')}
-          disabled={isAgent}
-        >
-          <SelectTrigger className="h-8 text-xs border-transparent hover:border-input focus:border-input bg-transparent focus:bg-white transition-all">
-            <SelectValue placeholder="Select Pool" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="POOL-1">POOL-1</SelectItem>
-            <SelectItem value="POOL-2">POOL-2</SelectItem>
-            <SelectItem value="POOL-3">POOL-3</SelectItem>
-            <SelectItem value="POOL-4">POOL-4</SelectItem>
-            <SelectItem value="POOL-5">POOL-5</SelectItem>
-            <SelectItem value="POOL-6">POOL-6</SelectItem>
-            <SelectItem value="POOL-7">POOL-7</SelectItem>
-          </SelectContent>
-        </Select>
-      </TableCell>
-      <TableCell className="border-r" style={{ width: columnWidths.arbitrationStatus, minWidth: columnWidths.arbitrationStatus }}>
+<TableCell
+  className="border-r"
+  style={{
+    width: columnWidths.pool,
+    minWidth: columnWidths.pool,
+  }}
+>
+  <Input
+    list={`pool-options-${item.id}`}
+    className="h-8 text-xs border-transparent hover:border-input focus:border-input bg-transparent focus:bg-white transition-all"
+    placeholder="Select or type pool"
+    value={item.pool || ""}
+    onChange={(e) =>
+      handleFieldUpdate(item, "pool", e.target.value)
+    }
+    disabled={isAgent}
+  />
+
+  <datalist id={`pool-options-${item.id}`}>
+    <option value="POOL-1" />
+    <option value="POOL-2" />
+    <option value="POOL-3" />
+    <option value="POOL-4" />
+    <option value="POOL-5" />
+    <option value="POOL-6" />
+    <option value="POOL-7" />
+  </datalist>
+</TableCell>
+
+        <TableCell className="border-r" style={{ width: columnWidths.arbitrationStatus, minWidth: columnWidths.arbitrationStatus }}>
         <InlineInput 
           key={`arb-${item.id}`}
           className="h-8 text-xs border-transparent hover:border-input focus:border-input bg-transparent focus:bg-white transition-all" 
@@ -475,7 +484,7 @@ const CaseRow = memo(({
               size="icon" 
               className="h-7 w-7 text-primary hover:bg-primary/10 transition-colors active:scale-90"
               onClick={() => handleStartEdit(item)}
-            >
+>
               <Edit2 className="h-3.5 w-3.5" />
             </Button>
           </div>
