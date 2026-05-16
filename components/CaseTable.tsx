@@ -129,7 +129,6 @@ const CaseRow = memo(({
           className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer transition-transform active:scale-90"
           checked={selectedIds.includes(item.id)}
           onChange={() => toggleSelect(item.id)}
-          disabled={isAgent}
         />
       </TableCell>
       <TableCell className="font-mono text-xs border-r font-bold text-primary" style={{ width: columnWidths.uniqueId, minWidth: columnWidths.uniqueId }}>
@@ -339,6 +338,7 @@ const CaseRow = memo(({
           placeholder="Action..."
           value={item.actionToBeTaken}
           onSave={(val: string) => handleFieldUpdate(item, 'actionToBeTaken', val)}
+          disabled={isAgent}
         />
       </TableCell>
       <TableCell className="border-r" style={{ width: columnWidths.comments, minWidth: columnWidths.comments }}>
@@ -348,6 +348,7 @@ const CaseRow = memo(({
           placeholder="Add comments..."
           value={item.comments}
           onSave={(val: string) => handleFieldUpdate(item, 'comments', val)}
+          disabled={isAgent}
         />
       </TableCell>
       <TableCell className="border-r" style={{ width: columnWidths.dispatchStatus, minWidth: columnWidths.dispatchStatus }}>
@@ -466,6 +467,23 @@ const CaseRow = memo(({
   </datalist>
 </TableCell>
 
+<TableCell
+  className="border-r"
+  style={{
+    width: columnWidths.arbitrators,
+    minWidth: columnWidths.arbitrators,
+  }}
+>
+  <InlineInput
+    key={`arbitrators-${item.id}`}
+    className="h-8 text-xs border-transparent hover:border-input focus:border-input bg-transparent focus:bg-white transition-all"
+    placeholder="Arbitrators"
+    value={item.arbitrators}
+    onSave={(val: string) => handleFieldUpdate(item, "arbitrators", val)}
+    disabled={isAgent}
+  />
+</TableCell>
+
         <TableCell className="border-r" style={{ width: columnWidths.arbitrationStatus, minWidth: columnWidths.arbitrationStatus }}>
         <InlineInput 
           key={`arb-${item.id}`}
@@ -505,7 +523,8 @@ export function CaseTable() {
     setSearch, 
     columnFilters, 
     setColumnFilters, 
-    filteredCases 
+    filteredCases,
+    exportableCases 
   } = useFirebase();
   const isAgent = user?.role === 'agent';
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -537,6 +556,7 @@ export function CaseTable() {
     dispatchedDate: 150,
     company: 150,
     pool: 150,
+    arbitrators: 180,
     arbitrationStatus: 150,
     priority: 120,
     actions: 100,
@@ -690,11 +710,21 @@ export function CaseTable() {
   }, [filteredCases, columnWidths]);
 
   const handleStartEdit = (item: any) => {
+    if (isAgent) {
+      toast.error('You do not have permission to edit cases');
+      return;
+    }
+
     setEditingId(item.id);
     setEditData({ ...item });
   };
 
   const handleSaveEdit = async () => {
+    if (isAgent) {
+      toast.error('You do not have permission to edit cases');
+      return;
+    }
+
     if (!editingId || !editData) return;
     
     try {
@@ -710,6 +740,11 @@ export function CaseTable() {
   };
 
   const handleFieldUpdate = async (item: any, field: string, value: any) => {
+    if (isAgent) {
+      toast.error('You do not have permission to edit cases');
+      return;
+    }
+
     try {
       const docRef = doc(db, 'cases', item.id);
       const updateData: any = { [field]: value };
@@ -784,21 +819,43 @@ export function CaseTable() {
     throw new Error(JSON.stringify(errInfo));
   }
 
+  const selectableCases = useMemo(() => {
+    const allowedIds = new Set(exportableCases.map((c: any) => c.id));
+    return filteredCases.filter((c: any) => allowedIds.has(c.id));
+  }, [filteredCases, exportableCases]);
+
+  const selectedCasesForExport = useMemo(() => {
+    const allowedIds = new Set(exportableCases.map((c: any) => c.id));
+    return cases.filter((c: any) => selectedIds.includes(c.id) && allowedIds.has(c.id));
+  }, [cases, selectedIds, exportableCases]);
+
   const toggleSelectAll = () => {
-    if (selectedIds.length === filteredCases.length) {
+    if (selectedIds.length === selectableCases.length && selectableCases.length > 0) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(filteredCases.map(c => c.id));
+      setSelectedIds(selectableCases.map((c: any) => c.id));
     }
   };
 
   const toggleSelect = (id: string) => {
+    const isAllowed = exportableCases.some((c: any) => c.id === id);
+
+    if (!isAllowed) {
+      toast.error('You can only select cases assigned to you');
+      return;
+    }
+
     setSelectedIds(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
 
   const handleBulkUpdate = async (field: string, value: any) => {
+    if (isAgent) {
+      toast.error('You do not have permission to bulk edit cases');
+      return;
+    }
+
     if (selectedIds.length === 0) return;
     setIsBulkUpdating(true);
     const batch = writeBatch(db);
@@ -835,6 +892,11 @@ export function CaseTable() {
   };
 
   const handleBulkDelete = async () => {
+    if (isAgent) {
+      toast.error('You do not have permission to delete cases');
+      return;
+    }
+
     if (selectedIds.length === 0) return;
     setIsBulkUpdating(true);
     const batch = writeBatch(db);
@@ -882,6 +944,7 @@ export function CaseTable() {
         'Dispatch Date': c.dispatchedDate ? formatDate(c.dispatchedDate) : '',
         'Company': c.company || '',
         'POOL': c.pool || '',
+        'Arbitrators': c.arbitrators || '',
         'Priority': c.priority || 'Medium',
         'Arbitration Status': c.arbitrationStatus || ''
       }));
@@ -890,7 +953,7 @@ export function CaseTable() {
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Selected Cases");
       
-      const fileName = `Selected_Cases_${format(new Date(), 'dd-MM-yyyy_HHmm')}.xlsx`;
+      const fileName = `${user?.username || 'User'}_Selected_Cases_${format(new Date(), 'dd-MM-yyyy_HHmm')}.xlsx`;
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       
@@ -959,35 +1022,39 @@ export function CaseTable() {
           )}
         </div>
 
-        {selectedIds.length > 0 && !isAgent && (
+        {selectedIds.length > 0 && (
           <div className="flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-lg border border-primary/20 animate-in fade-in slide-in-from-top-2">
             <span className="text-xs font-medium text-primary whitespace-nowrap">
               {selectedIds.length} selected
             </span>
             <div className="h-4 w-[1px] bg-primary/20 mx-1" />
-            
-            <Select onValueChange={(val: string | null) => val && handleBulkUpdate('status', val)} disabled={isBulkUpdating}>
-              <SelectTrigger className="h-8 text-xs w-[130px] bg-white">
-                <SelectValue placeholder="Bulk Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="OVERLAP">OVERLAP</SelectItem>
-                <SelectItem value="FRESH">FRESH</SelectItem>
-                <SelectItem value="RE-VERIFICATION">RE-VERIFICATION</SelectItem>
-              </SelectContent>
-            </Select>
 
-            <Select onValueChange={(val: string | null) => val && handleBulkUpdate('dispatchStatus', val)} disabled={isBulkUpdating}>
-              <SelectTrigger className="h-8 text-xs w-[130px] bg-white">
-                <SelectValue placeholder="Bulk Dispatch" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Pending">Pending</SelectItem>
-                <SelectItem value="Dispatched">Dispatched</SelectItem>
-                <SelectItem value="Hold">Hold</SelectItem>
-                <SelectItem value="Closed">Closed</SelectItem>
-              </SelectContent>
-            </Select>
+            {!isAgent && (
+              <>
+                <Select onValueChange={(val: string | null) => val && handleBulkUpdate('status', val)} disabled={isBulkUpdating}>
+                  <SelectTrigger className="h-8 text-xs w-[130px] bg-white">
+                    <SelectValue placeholder="Bulk Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OVERLAP">OVERLAP</SelectItem>
+                    <SelectItem value="FRESH">FRESH</SelectItem>
+                    <SelectItem value="RE-VERIFICATION">RE-VERIFICATION</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select onValueChange={(val: string | null) => val && handleBulkUpdate('dispatchStatus', val)} disabled={isBulkUpdating}>
+                  <SelectTrigger className="h-8 text-xs w-[130px] bg-white">
+                    <SelectValue placeholder="Bulk Dispatch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Dispatched">Dispatched</SelectItem>
+                    <SelectItem value="Hold">Hold</SelectItem>
+                    <SelectItem value="Closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </>
+            )}
 
             <Button 
               variant="outline" 
@@ -999,36 +1066,38 @@ export function CaseTable() {
               Export
             </Button>
 
-            <Dialog>
-              <DialogTrigger 
-                className={cn(
-                  buttonVariants({ variant: 'ghost', size: 'sm' }),
-                  "h-8 text-xs text-destructive hover:bg-destructive/10",
-                  isBulkUpdating && "pointer-events-none opacity-50"
-                )}
-              >
-                <Trash2 className="h-3.5 w-3.5 mr-1" />
-                Delete
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Delete Cases</DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to delete {selectedIds.length} selected cases? This action cannot be undone.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-                  <Button 
-                    variant="destructive" 
-                    onClick={handleBulkDelete} 
-                    disabled={isBulkUpdating}
-                  >
-                    {isBulkUpdating ? "Deleting..." : "Delete"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            {!isAgent && (
+              <Dialog>
+                <DialogTrigger 
+                  className={cn(
+                    buttonVariants({ variant: 'ghost', size: 'sm' }),
+                    "h-8 text-xs text-destructive hover:bg-destructive/10",
+                    isBulkUpdating && "pointer-events-none opacity-50"
+                  )}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  Delete
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Delete Cases</DialogTitle>
+                    <DialogDescription>
+                      Are you sure you want to delete {selectedIds.length} selected cases? This action cannot be undone.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+                    <Button 
+                      variant="destructive" 
+                      onClick={handleBulkDelete} 
+                      disabled={isBulkUpdating}
+                    >
+                      {isBulkUpdating ? "Deleting..." : "Delete"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
 
             <Button 
               variant="ghost" 
@@ -1062,9 +1131,8 @@ export function CaseTable() {
                   <input 
                     type="checkbox" 
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-                    checked={selectedIds.length === filteredCases.length && filteredCases.length > 0}
+                    checked={selectedIds.length === selectableCases.length && selectableCases.length > 0}
                     onChange={toggleSelectAll}
-                    disabled={isAgent}
                   />
                 </TableHead>
                 <TableHead 
@@ -1308,6 +1376,16 @@ export function CaseTable() {
                 </TableHead>
                 <TableHead 
                   className="sticky top-0 bg-gray-50 z-30 border-r border-b font-bold text-black py-3 group relative"
+                  style={{ width: columnWidths.arbitrators, minWidth: columnWidths.arbitrators }}
+                >
+                  Arbitrators
+                  <div 
+                    className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-50"
+                    onMouseDown={(e) => handleResizeStart(e, 'arbitrators')}
+                  />
+                </TableHead>
+                <TableHead 
+                  className="sticky top-0 bg-gray-50 z-30 border-r border-b font-bold text-black py-3 group relative"
                   style={{ width: columnWidths.arbitrationStatus, minWidth: columnWidths.arbitrationStatus }}
                 >
                   Arbitration status
@@ -1524,6 +1602,14 @@ export function CaseTable() {
                         <SelectItem value="POOL-7">POOL-7</SelectItem>
                       </SelectContent>
                     </Select>
+                  </TableHead>
+                  <TableHead className="border-r px-2 py-1" style={{ width: columnWidths.arbitrators, minWidth: columnWidths.arbitrators }}>
+                    <Input 
+                      placeholder="Filter..." 
+                      className="h-7 text-[10px] bg-white" 
+                      value={columnFilters.arbitrators || ''}
+                      onChange={(e) => handleColumnFilterChange('arbitrators', e.target.value)}
+                    />
                   </TableHead>
                   <TableHead className="border-r px-2 py-1" style={{ width: columnWidths.arbitrationStatus, minWidth: columnWidths.arbitrationStatus }}>
                     <Input 

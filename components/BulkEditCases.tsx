@@ -14,9 +14,20 @@ import { normalizeDate, formatDate } from '@/lib/utils';
 import { BulkActionDialog } from './BulkActionDialog';
 
 export function BulkEditCases() {
-  const { agents, cases } = useFirebase();
+  const { agents, cases, user } = useFirebase();
+  const isAdmin = user?.role === 'admin';
+
+  // Only admins can access bulk edit. Agents/users should never see or run this.
+  if (!isAdmin) {
+    return null;
+  }
 
   const handleDownloadTemplate = () => {
+    if (!isAdmin) {
+      toast.error('Only admins can download the bulk edit template');
+      return;
+    }
+
     const headers = [
       'Unique ID',
       'Agmt No.', 
@@ -36,6 +47,7 @@ export function BulkEditCases() {
       'Priority', 
       'Assigned To', 
       'POOL',
+      'Arbitrators',
       'Arbitration status'
     ];
     const data = [headers];
@@ -46,6 +58,10 @@ export function BulkEditCases() {
   };
 
   const onProcessFile = async (jsonData: any[]) => {
+    if (!isAdmin) {
+      throw new Error('Only admins can bulk edit cases');
+    }
+
     if (jsonData.length === 0) {
       throw new Error("No data found in the file");
     }
@@ -207,6 +223,7 @@ const caseItem = matchedCase;
           updateField('dispatchStatus', row['Dispatch Status'] || row['dispatchStatus']);
           updateField('assignedTo', row['Assigned To'] || row['assignedTo']);
           updateField('pool', row['POOL'] || row['Pool'] || row['pool']);
+          updateField('arbitrators', row['Arbitrators'] || row['arbitrators']);
           updateField('arbitrationStatus', row['Arbitration status'] || row['arbitrationStatus']);
           
           if (row['Priority'] || row['priority']) {

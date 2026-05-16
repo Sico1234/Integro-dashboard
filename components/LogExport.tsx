@@ -15,33 +15,48 @@ import { cn } from "@/lib/utils";
 import { toast } from 'sonner';
 
 export function LogExport() {
-  const { cases } = useFirebase();
+  const { exportableCases, user } = useFirebase();
   const [date, setDate] = useState<DateRange | undefined>({
     from: undefined,
     to: undefined,
   });
 
+  const toJsDate = (value: any): Date | null => {
+    if (!value) return null;
+
+    try {
+      if (value.toDate) return value.toDate();
+      if (value instanceof Date) return value;
+
+      const parsed = new Date(value);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    } catch {
+      return null;
+    }
+  };
+
+  const formatMaybeDate = (value: any) => {
+    const dateValue = toJsDate(value);
+    return dateValue ? format(dateValue, 'dd-MM-yyyy') : '';
+  };
+
   const exportToExcel = () => {
     const toastId = toast.loading("Preparing export...");
+
     try {
       if (!date?.from || !date?.to) {
         toast.error("Please select a complete date range", { id: toastId });
         return;
       }
 
-      console.log("Exporting cases for range:", date.from, "to", date.to);
+      const filteredCases = exportableCases.filter(c => {
+        const receivedDate = toJsDate(c.receivedDate);
+        if (!receivedDate) return false;
 
-      const filteredCases = cases.filter(c => {
-        if (!c.receivedDate) return false;
-        try {
-          const receivedDate = c.receivedDate.toDate();
-          const start = startOfDay(date.from!);
-          const end = endOfDay(date.to!);
-          return isWithinInterval(receivedDate, { start, end });
-        } catch (e) {
-          console.error("Error checking date for case:", c.id, e);
-          return false;
-        }
+        const start = startOfDay(date.from!);
+        const end = endOfDay(date.to!);
+
+        return isWithinInterval(receivedDate, { start, end });
       });
 
       if (filteredCases.length === 0) {
@@ -52,8 +67,8 @@ export function LogExport() {
       const data = filteredCases.map(c => ({
         'Unique ID': c.uniqueId || '',
         'Agmt No.': c.agmtNo || '',
-        'Notice Date': c.noticeDate ? format(c.noticeDate.toDate(), 'dd-MM-yyyy') : '',
-        'Received Date': c.receivedDate ? format(c.receivedDate.toDate(), 'dd-MM-yyyy') : '',
+        'Notice Date': formatMaybeDate(c.noticeDate),
+        'Received Date': formatMaybeDate(c.receivedDate),
         'Ageing': calculateAgeing(c.receivedDate) || 0,
         'Fro': c.fro || '',
         'To': c.to || '',
@@ -65,8 +80,10 @@ export function LogExport() {
         'Action to be taken': c.actionToBeTaken || '',
         'Comments': c.comments || '',
         'Dispatch Status': c.dispatchStatus || 'Pending',
-        'Dispatch Date': c.dispatchedDate ? format(c.dispatchedDate.toDate(), 'dd-MM-yyyy') : '',
+        'Dispatch Date': formatMaybeDate(c.dispatchedDate),
         'Company': c.company || '',
+        'POOL': c.pool || '',
+        'Arbitrators': c.arbitrators || '',
         'Priority': c.priority || 'Medium',
         'Arbitration Status': c.arbitrationStatus || ''
       }));
@@ -74,20 +91,27 @@ export function LogExport() {
       const worksheet = XLSX.utils.json_to_sheet(data);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Cases Log");
-      
-      const fileName = `Case_Log_${format(date.from, 'dd-MM-yyyy')}_to_${format(date.to, 'dd-MM-yyyy')}.xlsx`;
-      
-      // Use XLSX.write and manual blob creation for better iframe compatibility
-      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      
+
+      const fileName = `${user?.username || 'User'}_Cases_${format(date.from, 'dd-MM-yyyy')}_to_${format(date.to, 'dd-MM-yyyy')}.xlsx`;
+
+      const excelBuffer = XLSX.write(workbook, {
+        bookType: 'xlsx',
+        type: 'array'
+      });
+
+      const blob = new Blob([excelBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
+
       link.href = url;
       link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
       window.URL.revokeObjectURL(url);
 
       toast.success(`Successfully exported ${filteredCases.length} cases`, { id: toastId });
